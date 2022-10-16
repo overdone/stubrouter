@@ -1,0 +1,151 @@
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+body, h1, h2, h3, h4, p, figure, blockquote, dl, dd {
+    margin: 0;
+}
+
+ul[role='list'],
+ol[role='list'] {
+    list-style: none;
+}
+
+html:focus-within {
+    scroll-behavior: smooth;
+}
+
+body {
+    min-height: 100vh;
+    text-rendering: optimizeSpeed;
+    line-height: 1.5;
+}
+
+a:not([class]) {
+    text-decoration-skip-ink: auto;
+}
+
+img, picture {
+    max-width: 100%;
+    display: block;
+}
+
+input, button, textarea, select {
+    font: inherit;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html:focus-within {
+        scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+.container {
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+}
+
+.container .error {
+    width: 100%;
+    height: 250px;
+    background-color: #f5dddd;
+    border-top: 1px solid red;
+    border-bottom: 1px solid red;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    padding-left: 200px;
+}
+
+.container .error .code {
+    font-size: 56px;
+    font-weight: 700;
+}
+
+.container .error .message {
+    font-size: 24px;
+}
+
+.container .form {
+    width: 100%;
+    height: 250px;
+    background-color: #f5f5f5;
+    border-top: 1px solid grey;
+    border-bottom: 1px solid grey;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.container .form .field {
+    padding: 0 10px;
+}
+
+.container .form .button {
+    border: none;
+    color: white;
+    background: grey;
+}
+
+.container .targets {
+    width: 100%;
+    min-height: 250px;
+    max-height: 600px;
+    overflow-y: auto;
+    background-color: #f5f5f5;
+    border-top: 1px solid grey;
+    border-bottom: 1px solid grey;
+    flex-direction: column;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 30px 0;
+    margin-bottom: 30px;
+}
+
+.container .targets .list {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+}
+
+.container .targets .list > li {
+    margin: 3px 0;
+    font-size: 18px;
+}
+
+.container .username {
+    font-weight: 700;
+}
+
+.container .logout {
+    color: grey;
+}
+
+.container .logout:visited {
+    color: grey;
+}
+
+a {
+    color: grey;
+}
+
+a:visited {
+    color: #009abd;
+}

@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns="http://www.w3.org/1999/html">
+<head>
+    <meta charset="UTF-8">
+    <title>FakeProxy</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="icon" href="data:,">
+</head>
+<body>
+<div class="container">
+    <div class="targets">
+        <ul class="list">
+            {{ range $k, $v := .Targets }}
+            <li><a href="{{ $k }}">{{ $v }}</a></li>
+            {{ end }}
+        </ul>
+    </div>
+    <p class="username">{{ .Username }}</p>
+    <a href="/logout" class="logout">Log Out</a>
+</div>
+</body>
+</html>
