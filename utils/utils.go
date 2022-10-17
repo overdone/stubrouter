@@ -3,15 +3,16 @@ package utils
 import (
 	"fmt"
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/overdone/stubrouter/config"
 	"net/url"
 	"strings"
 )
 
-func GetTokenString(secret string, username string) string {
+func GetTokenString(cfg *config.StubRouterConfig, username string) string {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"username": username,
+		cfg.Session.UseridField: username,
 	})
-	tokenString, _ := token.SignedString([]byte(secret))
+	tokenString, _ := token.SignedString([]byte(cfg.Session.TokenSecret))
 	return tokenString
 }
 

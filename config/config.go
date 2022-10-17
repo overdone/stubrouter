@@ -16,6 +16,7 @@ type StubRouterConfig struct {
 		IdleTimeout string `yaml:"idle_timeout"`
 		CookieName  string `yaml:"cookie_name"`
 		TokenSecret string `yaml:"token_secret"`
+		UseridField string `yaml:"userid_field"`
 	}
 
 	Targets map[string]string `yaml:"targets"`

@@ -1,9 +1,11 @@
 package main
 
 import (
+	"crypto/tls"
 	"encoding/gob"
 	"fmt"
 	"github.com/alexedwards/scs/v2"
+	"github.com/gorilla/mux"
 	"github.com/overdone/stubrouter/config"
 	"github.com/overdone/stubrouter/stubs"
 	"github.com/overdone/stubrouter/utils"
@@ -71,6 +73,9 @@ func handleProxy(w http.ResponseWriter, r *http.Request) {
 	targetPath := strings.TrimPrefix(r.URL.Path, path)
 	targetUrl, _ := url.Parse(host)
 	proxy := httputil.NewSingleHostReverseProxy(targetUrl)
+	proxy.Transport = &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
 
 	r.URL.Scheme = targetUrl.Scheme
 	r.URL.Host = targetUrl.Host
@@ -80,6 +85,7 @@ func handleProxy(w http.ResponseWriter, r *http.Request) {
 	r.Host = targetUrl.Host
 
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+		log.Printf(">>> Proxy redirect error: %s", err)
 		errorHandler(w, r, http.StatusBadGateway, "Proxy Server Error")
 	}
 
@@ -97,24 +103,23 @@ func handleProxy(w http.ResponseWriter, r *http.Request) {
 }
 
 func rootHandler(w http.ResponseWriter, r *http.Request) {
-	switch r.URL.Path {
-	case "/":
-		tmpl, err := template.ParseFiles("./static/index.html")
-		if err != nil {
-			log.Panic("Server error")
-		}
-		sessionData := getSessionData(r)
-		data := IndexViewData{*cfg, sessionData.Username}
-		err = tmpl.Execute(w, data)
-		if err != nil {
-			log.Panic("Server error")
-		}
-	default:
-		if _, hasKey := cfg.Targets[utils.ParseForkPath(r.URL.Path)]; !hasKey {
-			errorHandler(w, r, http.StatusNotFound, fmt.Sprintf("Target path '%s' not found", r.URL.Path))
-		} else {
-			handleProxy(w, r)
-		}
+	tmpl, err := template.ParseFiles("./static/index.html")
+	if err != nil {
+		log.Panic("Server error")
+	}
+	sessionData := getSessionData(r)
+	data := IndexViewData{*cfg, sessionData.Username}
+	err = tmpl.Execute(w, data)
+	if err != nil {
+		log.Panic("Server error")
+	}
+}
+
+func routeHandler(w http.ResponseWriter, r *http.Request) {
+	if _, hasKey := cfg.Targets[utils.ParseForkPath(r.URL.Path)]; !hasKey {
+		errorHandler(w, r, http.StatusNotFound, fmt.Sprintf("Target path '%s' not found", r.URL.Path))
+	} else {
+		handleProxy(w, r)
 	}
 }
 
@@ -135,7 +140,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 			log.Panic("Username must not be empty")
 		}
 
-		jwt := utils.GetTokenString(cfg.Session.TokenSecret, username)
+		jwt := utils.GetTokenString(cfg, username)
 		d := UserSessionData{username, jwt}
 		sessionManager.Destroy(r.Context())
 		sessionManager.Put(r.Context(), "userData", d)
@@ -236,13 +241,14 @@ func init() {
 func main() {
 	fs := http.FileServer(http.Dir("./static"))
 
-	mux := http.NewServeMux()
-	mux.Handle("/static/", http.StripPrefix("/static/", fs))
-	mux.Handle("/", authMiddleware(http.HandlerFunc(rootHandler)))
-	mux.Handle("/stubapi/", authMiddleware(http.HandlerFunc(apiHandler)))
-	mux.HandleFunc("/login", loginHandler)
-	mux.HandleFunc("/logout", logoutHandler)
-	handler := serverErrorMiddleware(logMiddleware(mux))
+	mx := mux.NewRouter()
+	mx.PathPrefix("/static/").Handler(http.StripPrefix("/static/", fs)).Methods("GET")
+	mx.HandleFunc("/login", loginHandler).Methods("GET", "POST")
+	mx.HandleFunc("/logout", logoutHandler).Methods("GET")
+	mx.Handle("/stubapi/", authMiddleware(http.HandlerFunc(apiHandler))).Methods("GET", "POST", "DELETE")
+	mx.Handle("/", authMiddleware(http.HandlerFunc(rootHandler))).Methods("GET")
+	mx.PathPrefix("/{route}").Handler(authMiddleware(http.HandlerFunc(routeHandler)))
+	handler := serverErrorMiddleware(logMiddleware(mx))
 
 	addr := fmt.Sprintf("%s:%s", cfg.Server.Host, strconv.Itoa(cfg.Server.Port))
 	log.Printf("-- Start proxy server on %s --", addr)
