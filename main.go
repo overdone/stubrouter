@@ -85,11 +85,12 @@ func handleProxy(w http.ResponseWriter, r *http.Request) {
 	r.Host = targetUrl.Host
 
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
-		log.Printf(">>> Proxy redirect error: %s", err)
-		errorHandler(w, r, http.StatusBadGateway, "Proxy Server Error")
+		log.Printf(">>> Error while proxy requeat to [%s]: %s", targetUrl, err)
+		errorHandler(w, r, http.StatusBadGateway, fmt.Sprintf("Can`t proxy request to %s", targetUrl))
 	}
 
 	if sm, err := stubStore.GetServiceMap(r.URL); err != nil || sm == nil {
+		log.Println(">>> Error while getting stub")
 		proxy.ServeHTTP(w, r)
 	} else if stub, ok := sm.Service[targetPath]; ok {
 		w.WriteHeader(stub.Code)
@@ -254,5 +255,6 @@ func main() {
 	log.Printf("-- Start proxy server on %s --", addr)
 	if err := http.ListenAndServe(addr, sessionManager.LoadAndSave(handler)); err != nil {
 		log.Printf(">>> Fail start server on %s", addr)
+		log.Printf("Error: %s", err)
 	}
 }

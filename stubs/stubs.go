@@ -38,14 +38,15 @@ type FileStubStorage struct {
 
 type RedisStubStorage struct {
 	ConnString string
-	ctx        context.Context
-	client     *redis.Client
 }
 
 type CachedStorage struct {
 	Store StubStorage
 	Cache *cache.Cache
 }
+
+var ctx context.Context
+var redisClient *redis.Client
 
 // InitStorage Inits FS storage
 func (s FileStubStorage) InitStorage(cfg *config.StubRouterConfig) error {
@@ -97,13 +98,13 @@ func (s RedisStubStorage) InitStorage(cfg *config.StubRouterConfig) error {
 		return fmt.Errorf("invalid redis path")
 	}
 
-	s.client = redis.NewClient(opts)
+	redisClient = redis.NewClient(opts)
 	return nil
 }
 
-// GetServiceMap Get host data from DB
+// GetServiceMap Get host data from Redis
 func (s RedisStubStorage) GetServiceMap(host *url.URL) (*ServiceMap, error) {
-	val, err := s.client.Get(s.ctx, utils.HostToString(host)).Result()
+	val, err := redisClient.Get(ctx, utils.HostToString(host)).Result()
 	if err != nil {
 		return nil, err
 	}
@@ -117,9 +118,9 @@ func (s RedisStubStorage) GetServiceMap(host *url.URL) (*ServiceMap, error) {
 	return nil, nil
 }
 
-// SetServiceMap Set host data tp DB
+// SetServiceMap Set host data to Redis
 func (s RedisStubStorage) SetServiceMap(host *url.URL, data ServiceMap) error {
-	err := s.client.Set(s.ctx, utils.HostToString(host), data, 0).Err()
+	err := redisClient.Set(ctx, utils.HostToString(host), data, 0).Err()
 	if err != nil {
 		return fmt.Errorf("error writing to Redis DB")
 	}

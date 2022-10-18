@@ -3,6 +3,7 @@ package config
 import (
 	"gopkg.in/yaml.v3"
 	"os"
+	"path"
 )
 
 type StubRouterConfig struct {
@@ -36,6 +37,18 @@ type StubRouterConfig struct {
 
 var cfg *StubRouterConfig
 
+// normalize fix params and set defaults
+func normalize(cfg *StubRouterConfig) error {
+	fixedTargets := make(map[string]string)
+
+	for k, v := range cfg.Targets {
+		fixedTargets[path.Clean("/"+k)] = v
+	}
+	cfg.Targets = fixedTargets
+
+	return nil
+}
+
 func ParseConfig() (*StubRouterConfig, error) {
 	configFile, err := os.Open("config.yml")
 	if err != nil {
@@ -48,5 +61,6 @@ func ParseConfig() (*StubRouterConfig, error) {
 		return cfg, err
 	}
 
+	_ = normalize(cfg)
 	return cfg, nil
 }
