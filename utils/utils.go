@@ -5,7 +5,6 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/overdone/stubrouter/config"
 	"net/url"
-	"strings"
 )
 
 func GetTokenString(cfg *config.StubRouterConfig, username string) string {
@@ -14,10 +13,6 @@ func GetTokenString(cfg *config.StubRouterConfig, username string) string {
 	})
 	tokenString, _ := token.SignedString([]byte(cfg.Session.TokenSecret))
 	return tokenString
-}
-
-func ParseForkPath(path string) string {
-	return "/" + strings.Split(strings.TrimLeft(path, "/"), "/")[0]
 }
 
 func HostToString(host *url.URL) string {

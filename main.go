@@ -65,7 +65,7 @@ func getSessionData(r *http.Request) *UserSessionData {
 }
 
 func handleProxy(w http.ResponseWriter, r *http.Request) {
-	path := utils.ParseForkPath(r.URL.Path)
+	path := "/" + mux.Vars(r)["route"]
 	host := cfg.Targets[path]
 
 	sessionData := getSessionData(r)
@@ -90,9 +90,9 @@ func handleProxy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if sm, err := stubStore.GetServiceMap(r.URL); err != nil || sm == nil {
-		log.Println(">>> Error while getting stub")
 		proxy.ServeHTTP(w, r)
 	} else if stub, ok := sm.Service[targetPath]; ok {
+		log.Printf("Get %s response from stub", targetPath)
 		w.WriteHeader(stub.Code)
 		for k, v := range stub.Headers {
 			w.Header().Add(k, v)
@@ -117,10 +117,19 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func routeHandler(w http.ResponseWriter, r *http.Request) {
-	if _, hasKey := cfg.Targets[utils.ParseForkPath(r.URL.Path)]; !hasKey {
-		errorHandler(w, r, http.StatusNotFound, fmt.Sprintf("Target path '%s' not found", r.URL.Path))
+	forkPath := "/" + mux.Vars(r)["route"]
+
+	if _, hasKey := cfg.Targets[forkPath]; !hasKey {
+		msg := fmt.Sprintf("Target path '%s' not found", r.URL.Path)
+		log.Println(msg)
+		errorHandler(w, r, http.StatusNotFound, msg)
 	} else {
-		handleProxy(w, r)
+		if forkPath == r.URL.Path {
+			// Go to index
+			http.Redirect(w, r, r.URL.Path+"/", http.StatusMovedPermanently)
+		} else {
+			handleProxy(w, r)
+		}
 	}
 }
 
@@ -141,12 +150,18 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 			log.Panic("Username must not be empty")
 		}
 
+		val := sessionManager.Pop(r.Context(), "originUrl")
+		tUrl, ok := val.(string)
+		if !ok {
+			tUrl = "/"
+		}
+
 		jwt := utils.GetTokenString(cfg, username)
 		d := UserSessionData{username, jwt}
 		sessionManager.Destroy(r.Context())
 		sessionManager.Put(r.Context(), "userData", d)
 
-		http.Redirect(w, r, "/", http.StatusMovedPermanently)
+		http.Redirect(w, r, tUrl, http.StatusMovedPermanently)
 	}
 }
 
@@ -178,6 +193,8 @@ func authMiddleware(next http.Handler) http.Handler {
 		if sessionManager.Exists(r.Context(), "userData") {
 			next.ServeHTTP(w, r)
 		} else {
+			// Save original user url path
+			sessionManager.Put(r.Context(), "originUrl", r.URL.Path)
 			http.Redirect(w, r, "/login", http.StatusMovedPermanently)
 		}
 	}
@@ -241,17 +258,26 @@ func init() {
 
 func main() {
 	fs := http.FileServer(http.Dir("./static"))
-
 	mx := mux.NewRouter()
-	mx.PathPrefix("/static/").Handler(http.StripPrefix("/static/", fs)).Methods("GET")
-	mx.HandleFunc("/login", loginHandler).Methods("GET", "POST")
-	mx.HandleFunc("/logout", logoutHandler).Methods("GET")
-	mx.Handle("/stubapi/", authMiddleware(http.HandlerFunc(apiHandler))).Methods("GET", "POST", "DELETE")
-	mx.Handle("/", authMiddleware(http.HandlerFunc(rootHandler))).Methods("GET")
-	mx.PathPrefix("/{route}").Handler(authMiddleware(http.HandlerFunc(routeHandler)))
+
+	mx.PathPrefix("/static/").
+		Handler(http.StripPrefix("/static/", fs)).
+		Methods("GET")
+	mx.HandleFunc("/login", loginHandler).
+		Methods("GET", "POST")
+	mx.HandleFunc("/logout", logoutHandler).
+		Methods("GET")
+	mx.Handle("/stubapi/", authMiddleware(http.HandlerFunc(apiHandler))).
+		Methods("GET", "POST", "DELETE")
+	mx.Handle("/", authMiddleware(http.HandlerFunc(rootHandler))).
+		Methods("GET")
+	mx.PathPrefix("/{route}").
+		Handler(authMiddleware(http.HandlerFunc(routeHandler)))
+
 	handler := serverErrorMiddleware(logMiddleware(mx))
 
 	addr := fmt.Sprintf("%s:%s", cfg.Server.Host, strconv.Itoa(cfg.Server.Port))
+
 	log.Printf("-- Start proxy server on %s --", addr)
 	if err := http.ListenAndServe(addr, sessionManager.LoadAndSave(handler)); err != nil {
 		log.Printf(">>> Fail start server on %s", addr)
