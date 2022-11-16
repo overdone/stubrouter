@@ -20,6 +20,7 @@ type ServiceStub struct {
 	Code    int               `yaml:"code" json:"code"`
 	Data    string            `yaml:"data" json:"data"`
 	Headers map[string]string `yaml:"headers" json:"headers"`
+	Timeout int               `yaml:"timeout" json:"timeout"`
 }
 
 type ServiceMap struct {

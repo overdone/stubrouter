@@ -9,9 +9,10 @@ function createStubFormElement(target, formData, isNew= false) {
                         <input type="button" value="Remove" class="button remove-button" onClick="onRemoveStubClick(this, '${target}')" tabindex="0" />
                     </div>
                 </div>
-                <input name="code" type="number" class="code" placeholder="Code" value="${formData.code || ''}" />
+                <input name="code" type="number" class="number" placeholder="Code" value="${formData.code || ''}" />
                 <textarea name="headers" rows="2" placeholder="Headers">${JSON.stringify(formData.headers) || '{}'}</textarea>
                 <textarea name="data" rows="5" placeholder="Data">${formData.data || ''}</textarea>
+                <input name="timeout" type="number" class="number" placeholder="Timeout, ms" value="${formData.timeout || ''}" />
             </form>
         </li>`;
 }

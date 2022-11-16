@@ -15,10 +15,15 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 )
+
+type IndexesFileSystem struct {
+	fs http.FileSystem
+}
 
 type UserSessionData struct {
 	Username string
@@ -38,6 +43,28 @@ type IndexViewData struct {
 var cfg *config.StubRouterConfig
 var stubStore stubs.StubStorage
 var sessionManager *scs.SessionManager
+
+func (nfs IndexesFileSystem) Open(path string) (http.File, error) {
+	f, err := nfs.fs.Open(path)
+	if err != nil {
+		return nil, err
+	}
+
+	s, _ := f.Stat()
+	if s.IsDir() {
+		index := filepath.Join(path, "index.html")
+		if _, err := nfs.fs.Open(index); err != nil {
+			closeErr := f.Close()
+			if closeErr != nil {
+				return nil, closeErr
+			}
+
+			return nil, err
+		}
+	}
+
+	return f, nil
+}
 
 func renderError(w http.ResponseWriter, code int, message string) {
 	data := ErrorViewData{
@@ -100,6 +127,7 @@ func handleProxy(w http.ResponseWriter, r *http.Request) {
 		for k, v := range stub.Headers {
 			w.Header().Add(k, v)
 		}
+		time.Sleep(time.Duration(stub.Timeout) * time.Millisecond)
 		w.Write([]byte(stub.Data))
 	} else {
 		proxy.ServeHTTP(w, r)
@@ -201,6 +229,7 @@ func apiHandlerTargetStub(w http.ResponseWriter, r *http.Request) {
 		}
 
 		code, err := strconv.Atoi(reqData["code"].(string))
+		timeout, err := strconv.Atoi(reqData["timeout"].(string))
 		data := reqData["data"].(string)
 		if err != nil {
 			http.Error(w, "Request data not valid", http.StatusBadRequest)
@@ -213,7 +242,7 @@ func apiHandlerTargetStub(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		stubData := stubs.ServiceStub{Code: code, Data: data, Headers: headers}
+		stubData := stubs.ServiceStub{Code: code, Data: data, Headers: headers, Timeout: timeout}
 		err = stubStore.SaveServiceStub(targetUrl, pathParam, stubData)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -349,7 +378,7 @@ func init() {
 }
 
 func main() {
-	fs := http.FileServer(http.Dir("./static"))
+	fs := http.FileServer(IndexesFileSystem{http.Dir("./static")})
 	mx := mux.NewRouter()
 
 	mx.PathPrefix("/static/").
