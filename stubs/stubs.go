@@ -17,9 +17,9 @@ import (
 )
 
 type ServiceStub struct {
-	Code    int               `yaml:"code"`
-	Data    string            `yaml:"data"`
-	Headers map[string]string `yaml:"headers"`
+	Code    int               `yaml:"code" json:"code"`
+	Data    string            `yaml:"data" json:"data"`
+	Headers map[string]string `yaml:"headers" json:"headers"`
 }
 
 type ServiceMap struct {
@@ -28,8 +28,9 @@ type ServiceMap struct {
 
 type StubStorage interface {
 	InitStorage(cfg *config.StubRouterConfig) error
-	GetServiceMap(host *url.URL) (*ServiceMap, error)
-	SetServiceMap(host *url.URL, data ServiceMap) error
+	GetServiceStubs(host *url.URL) (*ServiceMap, error)
+	SaveServiceStub(host *url.URL, path string, data ServiceStub) error
+	RemoveServiceStub(host *url.URL, path string) error
 }
 
 type FileStubStorage struct {
@@ -45,7 +46,6 @@ type CachedStorage struct {
 	Cache *cache.Cache
 }
 
-var ctx context.Context
 var redisClient *redis.Client
 
 // InitStorage Inits FS storage
@@ -53,8 +53,8 @@ func (s FileStubStorage) InitStorage(cfg *config.StubRouterConfig) error {
 	return nil
 }
 
-// GetServiceMap Get host data from FS
-func (s FileStubStorage) GetServiceMap(host *url.URL) (*ServiceMap, error) {
+// GetServiceStubs Get all target service stubs data from FS
+func (s FileStubStorage) GetServiceStubs(host *url.URL) (*ServiceMap, error) {
 	filename := fmt.Sprintf("%s/%s.yml", s.FsPath, utils.HostToString(host))
 	file, err := os.Open(filepath.Clean(filename))
 	if err != nil {
@@ -72,18 +72,64 @@ func (s FileStubStorage) GetServiceMap(host *url.URL) (*ServiceMap, error) {
 	return servMap, nil
 }
 
-// SetServiceMap Set host data tp FS
-func (s FileStubStorage) SetServiceMap(host *url.URL, data ServiceMap) error {
-	// TODO: make it thread safe
+// SaveServiceStub Save stub data to FS
+func (s FileStubStorage) SaveServiceStub(host *url.URL, path string, data ServiceStub) error {
 	filename := fmt.Sprintf("%s/%s.yml", s.FsPath, utils.HostToString(host))
-	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
 		return fmt.Errorf("error opening file: %s", filename)
 	}
 	defer file.Close()
 
+	var servMap *ServiceMap
+	decoder := yaml.NewDecoder(file)
+	err = decoder.Decode(&servMap)
+	if err != nil { // File empty, or content not valid yaml, so init empty service map
+		servMap = &ServiceMap{Service: make(map[string]ServiceStub)}
+	}
+
+	// Clear file
+	err = file.Truncate(0)
+	_, err = file.Seek(0, 0)
+	if err != nil {
+		return err
+	}
+
+	servMap.Service[path] = data
 	enc := yaml.NewEncoder(file)
-	err = enc.Encode(data)
+	err = enc.Encode(servMap)
+	if err != nil {
+		return fmt.Errorf("error writing file: %s", filename)
+	}
+
+	return nil
+}
+
+func (s FileStubStorage) RemoveServiceStub(host *url.URL, path string) error {
+	filename := fmt.Sprintf("%s/%s.yml", s.FsPath, utils.HostToString(host))
+	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		return fmt.Errorf("error opening file: %s", filename)
+	}
+	defer file.Close()
+
+	var servMap *ServiceMap
+	decoder := yaml.NewDecoder(file)
+	err = decoder.Decode(&servMap)
+	if err != nil {
+		return err
+	}
+
+	// Clear file
+	err = file.Truncate(0)
+	_, err = file.Seek(0, 0)
+	if err != nil {
+		return err
+	}
+
+	delete(servMap.Service, path)
+	enc := yaml.NewEncoder(file)
+	err = enc.Encode(servMap)
 	if err != nil {
 		return fmt.Errorf("error writing file: %s", filename)
 	}
@@ -102,27 +148,52 @@ func (s RedisStubStorage) InitStorage(cfg *config.StubRouterConfig) error {
 	return nil
 }
 
-// GetServiceMap Get host data from Redis
-func (s RedisStubStorage) GetServiceMap(host *url.URL) (*ServiceMap, error) {
-	val, err := redisClient.Get(ctx, utils.HostToString(host)).Result()
+// GetServiceStubs Get all target service stubs data from Redis
+func (s RedisStubStorage) GetServiceStubs(host *url.URL) (*ServiceMap, error) {
+	ctx := context.Background()
+	val, err := redisClient.HGetAll(ctx, utils.HostToString(host)).Result()
 	if err != nil {
 		return nil, err
 	}
 
-	var servMap *ServiceMap
-	err = json.Unmarshal([]byte(val), servMap)
-	if err != nil {
-		return nil, err
+	servMap := &ServiceMap{}
+	servMap.Service = make(map[string]ServiceStub)
+
+	for key, value := range val {
+		var stub ServiceStub
+		err = json.Unmarshal([]byte(value), &stub)
+		if err != nil {
+			return nil, err
+		}
+
+		servMap.Service[key] = stub
 	}
 
-	return nil, nil
+	return servMap, nil
 }
 
-// SetServiceMap Set host data to Redis
-func (s RedisStubStorage) SetServiceMap(host *url.URL, data ServiceMap) error {
-	err := redisClient.Set(ctx, utils.HostToString(host), data, 0).Err()
+// SaveServiceStub Save stub data to Redis
+func (s RedisStubStorage) SaveServiceStub(host *url.URL, path string, data ServiceStub) error {
+	val, err := json.Marshal(data)
 	if err != nil {
-		return fmt.Errorf("error writing to Redis DB")
+		return err
+	}
+
+	ctx := context.Background()
+	err = redisClient.HSet(ctx, utils.HostToString(host), path, val).Err()
+	if err != nil {
+		return nil
+	}
+
+	return nil
+}
+
+// RemoveServiceStub Remove service stub from Redis
+func (s RedisStubStorage) RemoveServiceStub(host *url.URL, path string) error {
+	ctx := context.Background()
+	err := redisClient.HDel(ctx, utils.HostToString(host), path).Err()
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -140,8 +211,8 @@ func (cs *CachedStorage) InitStorage(cfg *config.StubRouterConfig) error {
 	return cs.Store.InitStorage(cfg)
 }
 
-// GetServiceMap - Get host data from store or cache
-func (cs *CachedStorage) GetServiceMap(host *url.URL) (*ServiceMap, error) {
+// GetServiceStubs - Get all target service stubs data from store or cache
+func (cs *CachedStorage) GetServiceStubs(host *url.URL) (*ServiceMap, error) {
 	key := utils.HostToString(host)
 	data, found := cs.Cache.Get(key)
 	if found {
@@ -151,7 +222,7 @@ func (cs *CachedStorage) GetServiceMap(host *url.URL) (*ServiceMap, error) {
 		}
 	}
 
-	s, err := cs.Store.GetServiceMap(host)
+	s, err := cs.Store.GetServiceStubs(host)
 	if err == nil {
 		cs.Cache.Set(key, s, cache.DefaultExpiration)
 	}
@@ -159,7 +230,14 @@ func (cs *CachedStorage) GetServiceMap(host *url.URL) (*ServiceMap, error) {
 	return s, err
 }
 
-// SetServiceMap - Set host data to store
-func (cs *CachedStorage) SetServiceMap(host *url.URL, data ServiceMap) error {
-	return cs.SetServiceMap(host, data)
+// SaveServiceStub Save stub data to store
+func (cs *CachedStorage) SaveServiceStub(host *url.URL, path string, data ServiceStub) error {
+	// TODO: need clear cache
+	return cs.Store.SaveServiceStub(host, path, data)
+}
+
+// RemoveServiceStub Remove service stub from cached store
+func (cs *CachedStorage) RemoveServiceStub(host *url.URL, path string) error {
+	// TODO: need clear cache
+	return cs.Store.RemoveServiceStub(host, path)
 }

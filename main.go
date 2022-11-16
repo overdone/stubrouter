@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/tls"
 	"encoding/gob"
+	"encoding/json"
 	"fmt"
 	"github.com/alexedwards/scs/v2"
 	"github.com/gorilla/mux"
@@ -38,18 +39,20 @@ var cfg *config.StubRouterConfig
 var stubStore stubs.StubStorage
 var sessionManager *scs.SessionManager
 
-func errorHandler(w http.ResponseWriter, r *http.Request, code int, message string) {
+func renderError(w http.ResponseWriter, code int, message string) {
 	data := ErrorViewData{
 		Code:    code,
 		Message: message,
 	}
-	tmpl, e := template.ParseFiles("./static/error.html")
+	tmpl, e := template.ParseFiles("./templates/error.html")
 	if e != nil {
 		http.Error(w, "Server error", http.StatusBadGateway)
+		return
 	}
 	e = tmpl.Execute(w, data)
 	if e != nil {
 		http.Error(w, "Server error", http.StatusBadGateway)
+		return
 	}
 }
 
@@ -86,10 +89,10 @@ func handleProxy(w http.ResponseWriter, r *http.Request) {
 
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
 		log.Printf(">>> Error while proxy requeat to [%s]: %s", targetUrl, err)
-		errorHandler(w, r, http.StatusBadGateway, fmt.Sprintf("Can`t proxy request to %s", targetUrl))
+		renderError(w, http.StatusBadGateway, fmt.Sprintf("Can`t proxy request to %s", targetUrl))
 	}
 
-	if sm, err := stubStore.GetServiceMap(r.URL); err != nil || sm == nil {
+	if sm, err := stubStore.GetServiceStubs(r.URL); err != nil || sm == nil {
 		proxy.ServeHTTP(w, r)
 	} else if stub, ok := sm.Service[targetPath]; ok {
 		log.Printf("Get %s response from stub", targetPath)
@@ -104,9 +107,10 @@ func handleProxy(w http.ResponseWriter, r *http.Request) {
 }
 
 func rootHandler(w http.ResponseWriter, r *http.Request) {
-	tmpl, err := template.ParseFiles("./static/index.html")
+	tmpl, err := template.ParseFiles("./templates/index.html")
 	if err != nil {
 		log.Panic("Server error")
+		return
 	}
 	sessionData := getSessionData(r)
 	data := IndexViewData{*cfg, sessionData.Username}
@@ -122,21 +126,109 @@ func routeHandler(w http.ResponseWriter, r *http.Request) {
 	if _, hasKey := cfg.Targets[forkPath]; !hasKey {
 		msg := fmt.Sprintf("Target path '%s' not found", r.URL.Path)
 		log.Println(msg)
-		errorHandler(w, r, http.StatusNotFound, msg)
+		renderError(w, http.StatusNotFound, msg)
+		return
+	}
+
+	if forkPath == r.URL.Path {
+		// Go to index
+		http.Redirect(w, r, r.URL.Path+"/", http.StatusMovedPermanently)
 	} else {
-		if forkPath == r.URL.Path {
-			// Go to index
-			http.Redirect(w, r, r.URL.Path+"/", http.StatusMovedPermanently)
+		handleProxy(w, r)
+	}
+}
+
+func apiHandlerTarget(w http.ResponseWriter, r *http.Request) {
+	targetParam := mux.Vars(r)["target"]
+	targetUrl, err := url.Parse(targetParam)
+
+	notFoundMessage := fmt.Sprintf("Stubs for target %s not found", targetUrl)
+
+	if err != nil {
+		http.Error(w, notFoundMessage, http.StatusNotFound)
+		return
+	}
+
+	switch r.Method {
+	case "GET":
+		if sm, err := stubStore.GetServiceStubs(targetUrl); err == nil && sm != nil {
+			w.Header().Set("Content-Type", "application/json")
+			resp, err := json.Marshal(sm.Service)
+			if err != nil {
+				http.Error(w, fmt.Sprintf("Can`t parse stubs for target %s", targetUrl), http.StatusInternalServerError)
+			}
+			w.Write(resp)
 		} else {
-			handleProxy(w, r)
+			w.Write([]byte("{}"))
 		}
 	}
 }
 
-func apiHandler(w http.ResponseWriter, r *http.Request) {
+func apiHandlerTargetStub(w http.ResponseWriter, r *http.Request) {
+	targetParam := mux.Vars(r)["target"]
+	pathParam := mux.Vars(r)["path"]
+	targetUrl, err := url.Parse(targetParam)
+
+	notFoundMessage := fmt.Sprintf("Stub %s for target %s not found", pathParam, targetUrl)
+
+	if err != nil {
+		http.Error(w, notFoundMessage, http.StatusNotFound)
+		return
+	}
+
 	switch r.Method {
 	case "GET":
+		resp := []byte("")
+		if sm, err := stubStore.GetServiceStubs(targetUrl); err == nil && sm != nil {
+			w.Header().Set("Content-Type", "application/json")
+			stub, ok := sm.Service[pathParam]
+			if ok {
+				if resp, err = json.Marshal(stub); err != nil {
+					http.Error(w, fmt.Sprintf("Can`t parse stubs for target %s", targetUrl), http.StatusInternalServerError)
+				}
+				w.Write(resp)
+			} else {
+				http.Error(w, notFoundMessage, http.StatusNotFound)
+			}
+		}
+
 	case "POST":
+		var reqData map[string]interface{}
+
+		if err = json.NewDecoder(r.Body).Decode(&reqData); err != nil {
+			http.Error(w, "Request data not valid", http.StatusBadRequest)
+			return
+		}
+
+		code, err := strconv.Atoi(reqData["code"].(string))
+		data := reqData["data"].(string)
+		if err != nil {
+			http.Error(w, "Request data not valid", http.StatusBadRequest)
+			return
+		}
+
+		var headers map[string]string
+		if err = json.Unmarshal([]byte(reqData["headers"].(string)), &headers); err != nil {
+			http.Error(w, "Request data not valid", http.StatusBadRequest)
+			return
+		}
+
+		stubData := stubs.ServiceStub{Code: code, Data: data, Headers: headers}
+		err = stubStore.SaveServiceStub(targetUrl, pathParam, stubData)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		} else {
+			http.Error(w, "", http.StatusOK)
+		}
+
+	case "DELETE":
+		err = stubStore.RemoveServiceStub(targetUrl, pathParam)
+
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		} else {
+			http.Error(w, "", http.StatusOK)
+		}
 	}
 }
 
@@ -169,6 +261,7 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	se := sessionManager.Destroy(r.Context())
 	if se != nil {
 		log.Panic("Session error")
+		return
 	}
 
 	http.Redirect(w, r, "/", http.StatusMovedPermanently)
@@ -178,7 +271,7 @@ func serverErrorMiddleware(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if err := recover(); err != nil {
-				errorHandler(w, r, http.StatusInternalServerError, fmt.Sprintf("%s", err))
+				renderError(w, http.StatusInternalServerError, fmt.Sprintf("%s", err))
 			}
 		}()
 
@@ -249,7 +342,6 @@ func init() {
 	sessionManager.Cookie.HttpOnly = true
 	sessionManager.Cookie.Persist = true
 	sessionManager.Cookie.SameSite = http.SameSiteStrictMode
-	sessionManager.Cookie.Secure = true
 
 	if err != nil {
 		log.Fatal(">>> Config error. Invalid config param")
@@ -267,8 +359,12 @@ func main() {
 		Methods("GET", "POST")
 	mx.HandleFunc("/logout", logoutHandler).
 		Methods("GET")
-	mx.Handle("/stubapi/", authMiddleware(http.HandlerFunc(apiHandler))).
+	mx.Handle("/stubapi/", http.HandlerFunc(apiHandlerTargetStub)).
+		Queries("target", "{target}", "path", "{path}").
 		Methods("GET", "POST", "DELETE")
+	mx.Handle("/stubapi/", http.HandlerFunc(apiHandlerTarget)).
+		Queries("target", "{target}").
+		Methods("GET")
 	mx.Handle("/", authMiddleware(http.HandlerFunc(rootHandler))).
 		Methods("GET")
 	mx.PathPrefix("/{route}").

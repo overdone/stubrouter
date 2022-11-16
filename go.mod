@@ -3,6 +3,7 @@ module github.com/overdone/stubrouter
 go 1.19
 
 require (
+	github.com/BurntSushi/toml v1.2.1
 	github.com/alexedwards/scs/v2 v2.5.0
 	github.com/go-redis/redis/v9 v9.0.0-rc.1
 	github.com/golang-jwt/jwt/v4 v4.4.2

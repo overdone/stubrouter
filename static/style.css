@@ -4,8 +4,9 @@
     box-sizing: border-box;
 }
 
-body, h1, h2, h3, h4, p, figure, blockquote, dl, dd {
+body, h1, h2, h3, h4, p, figure, blockquote, dl, dd, li, ul {
     margin: 0;
+    padding: 0;
 }
 
 ul[role='list'],
@@ -34,6 +35,11 @@ img, picture {
 
 input, button, textarea, select {
     font: inherit;
+}
+
+textarea {
+    resize: none;
+    width: 100%;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -119,13 +125,13 @@ input, button, textarea, select {
     margin-bottom: 30px;
 }
 
-.container .targets .list {
+.container .list {
     list-style-type: none;
     margin: 0;
     padding: 0;
 }
 
-.container .targets .list > li {
+.container .list > li {
     margin: 3px 0;
     font-size: 18px;
 }
@@ -148,4 +154,17 @@ a {
 
 a:visited {
     color: #009abd;
+}
+
+.button {
+    background: gray;
+    border-radius: 5px;
+    color: white;
+    padding: 2px 10px;
+    border: none;
+    cursor: pointer;
+}
+
+.remove-button {
+    background: black;
 }

@@ -1,6 +1,0 @@
-service:
-  "/info":
-    code: 200
-    data: '{ "ts": "2022", "name": "test" }'
-    headers:
-      "Content-Type": "application\\json"

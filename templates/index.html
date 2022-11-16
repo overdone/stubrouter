@@ -11,7 +11,10 @@
     <div class="targets">
         <ul class="list">
             {{ range $k, $v := .Targets }}
-            <li><a href="{{ $k }}">{{ $v }}</a></li>
+            <li>
+                <a href="{{ $k }}">{{ $v }}</a>
+                <a href="/static/stubs.html?target={{ $v }}">Stubs</a>
+            </li>
             {{ end }}
         </ul>
     </div>

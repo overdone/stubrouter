@@ -16,5 +16,5 @@ func GetTokenString(cfg *config.StubRouterConfig, username string) string {
 }
 
 func HostToString(host *url.URL) string {
-	return fmt.Sprintf("%s_%s", host.Hostname(), host.Port())
+	return fmt.Sprintf("%s_%s_%s", host.Scheme, host.Hostname(), host.Port())
 }

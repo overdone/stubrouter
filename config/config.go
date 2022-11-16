@@ -1,36 +1,35 @@
 package config
 
 import (
-	"gopkg.in/yaml.v3"
-	"os"
+	"github.com/BurntSushi/toml"
 	"path"
 )
 
 type StubRouterConfig struct {
 	Server struct {
-		Host string `yaml:"host"`
-		Port int    `yaml:"port"`
+		Host string `toml:"host"`
+		Port int    `toml:"port"`
 	}
 
 	Session struct {
-		Duration    string `yaml:"duration"`
-		IdleTimeout string `yaml:"idle_timeout"`
-		CookieName  string `yaml:"cookie_name"`
-		TokenSecret string `yaml:"token_secret"`
-		UseridField string `yaml:"userid_field"`
+		Duration    string `toml:"duration"`
+		IdleTimeout string `toml:"idle_timeout"`
+		CookieName  string `toml:"cookie_name"`
+		TokenSecret string `toml:"token_secret"`
+		UseridField string `toml:"userid_field"`
 	}
 
-	Targets map[string]string `yaml:"targets"`
+	Targets map[string]string `toml:"targets"`
 
 	Stubs struct {
 		Storage struct {
-			Type  string `yaml:"type"`
-			Path  string `yaml:"path"`
+			Type  string `toml:"type"`
+			Path  string `toml:"path"`
 			Cache struct {
-				Enabled            bool   `yaml:"enabled"`
-				ExpirationInterval string `yaml:"expiration_interval"`
-				CleanupInterval    string `yaml:"cleanup_interval"`
-			} `yaml:"cache"`
+				Enabled            bool   `toml:"enabled"`
+				ExpirationInterval string `toml:"expiration_interval"`
+				CleanupInterval    string `toml:"cleanup_interval"`
+			} `toml:"cache"`
 		}
 	}
 }
@@ -50,13 +49,7 @@ func normalize(cfg *StubRouterConfig) error {
 }
 
 func ParseConfig() (*StubRouterConfig, error) {
-	configFile, err := os.Open("config.yml")
-	if err != nil {
-		return cfg, err
-	}
-
-	decoder := yaml.NewDecoder(configFile)
-	err = decoder.Decode(&cfg)
+	_, err := toml.DecodeFile("config.toml", &cfg)
 	if err != nil {
 		return cfg, err
 	}
