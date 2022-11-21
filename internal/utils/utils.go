@@ -3,7 +3,7 @@ package utils
 import (
 	"fmt"
 	"github.com/golang-jwt/jwt/v4"
-	"github.com/overdone/stubrouter/config"
+	"github.com/overdone/stubrouter/internal/config"
 	"net/url"
 )
 
