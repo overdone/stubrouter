@@ -3,7 +3,7 @@ Reverse proxy for testing client side. It allows you to test some client app (UI
 without real backend server. Furthermore, you can redirect some queries to real backend and some queries to stubs. 
 To all backend requests will be added Authorization header with valid JWT token(optional).
 
-### config.yml
+### config.toml
 **server**
 - host - Proxy listen host
 - port - Proxy listen port
@@ -34,3 +34,4 @@ To all backend requests will be added Authorization header with valid JWT token(
 - Run proxy on some host and port. Example localhost:8080 
 - All request to localhost:8080/app1 will be proxifyed to http://server:9090
 - All request with stub config will be responded with stubs
+- You can configure stubs in UI http://localhost:8080

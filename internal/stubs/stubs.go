@@ -233,12 +233,14 @@ func (cs *CachedStorage) GetServiceStubs(host *url.URL) (*ServiceMap, error) {
 
 // SaveServiceStub Save stub data to store
 func (cs *CachedStorage) SaveServiceStub(host *url.URL, path string, data ServiceStub) error {
-	// TODO: need clear cache
+	key := utils.HostToString(host)
+	cs.Cache.Delete(key)
 	return cs.Store.SaveServiceStub(host, path, data)
 }
 
 // RemoveServiceStub Remove service stub from cached store
 func (cs *CachedStorage) RemoveServiceStub(host *url.URL, path string) error {
-	// TODO: need clear cache
+	key := utils.HostToString(host)
+	cs.Cache.Delete(key)
 	return cs.Store.RemoveServiceStub(host, path)
 }
