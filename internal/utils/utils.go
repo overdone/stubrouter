@@ -11,7 +11,7 @@ func GetTokenString(cfg *config.StubRouterConfig, username string) string {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		cfg.Session.UseridField: username,
 	})
-	tokenString, _ := token.SignedString([]byte(cfg.Session.TokenSecret))
+	tokenString, _ := token.SignedString([]byte(""))
 	return tokenString
 }
 

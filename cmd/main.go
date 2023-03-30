@@ -13,18 +13,17 @@ import (
 	"time"
 )
 
-var cfg *config.StubRouterConfig
+var cfg config.StubRouterConfig
 var stubStore stubs.StubStorage
 var sessionManager *scs.SessionManager
 
 func init() {
 	gob.Register(&routes.UserSessionData{})
 
-	log.Println("-- Read config file --")
 	c, err := config.ParseConfig()
 	cfg = c
 	if err != nil {
-		log.Fatal(">>> Error while reading config file")
+		log.Fatal(err)
 	}
 
 	log.Println("-- Init stub storage --")
@@ -42,7 +41,7 @@ func init() {
 	default:
 		log.Fatalf(">>> Config error. Stub storage type %s not supported", cfg.Stubs.Storage.Type)
 	}
-	err = stubStore.InitStorage(cfg)
+	err = stubStore.InitStorage(&cfg)
 	if err != nil {
 		log.Fatalf(">>> Init stub store error: %s", err)
 	}
@@ -62,7 +61,7 @@ func init() {
 }
 
 func main() {
-	handler := routes.Routes(cfg, sessionManager, stubStore)
+	handler := routes.Routes(&cfg, sessionManager, stubStore)
 
 	addr := fmt.Sprintf("%s:%s", cfg.Server.Host, strconv.Itoa(cfg.Server.Port))
 

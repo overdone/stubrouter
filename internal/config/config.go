@@ -1,40 +1,37 @@
 package config
 
 import (
-	"github.com/BurntSushi/toml"
+	"github.com/jessevdk/go-flags"
 	"path"
 )
 
 type StubRouterConfig struct {
 	Server struct {
-		Host string `toml:"host"`
-		Port int    `toml:"port"`
+		Host string `short:"h" long:"host" default:"0.0.0.0" description:"Listen host address"`
+		Port int    `short:"p" long:"port" default:"3333" description:"Listen host port"`
 	}
 
 	Session struct {
-		Duration    string `toml:"duration"`
-		IdleTimeout string `toml:"idle_timeout"`
-		CookieName  string `toml:"cookie_name"`
-		TokenSecret string `toml:"token_secret"`
-		UseridField string `toml:"userid_field"`
+		Duration    string `long:"sess-duration" default:"24h" description:"Session duration in time.Duration format"`
+		IdleTimeout string `long:"sess-idle" default:"0h" description:"Session idle in time.Duration format"`
+		CookieName  string `long:"sess-cookie-name" default:"sessid" description:"Session cookie name"`
+		UseridField string `long:"sess-user-field" description:"Session user field in JWT token"`
 	}
 
-	Targets map[string]string `toml:"targets"`
+	Targets map[string]string `short:"t" long:"target" description:"Target pair target_path:target_host"`
 
 	Stubs struct {
 		Storage struct {
-			Type  string `toml:"type"`
-			Path  string `toml:"path"`
+			Type  string `long:"stub-type" default:"file" description:"Stub storage type: file, redis"`
+			Path  string `long:"stub-path" default:"." description:"Stub storage path: FS path, redis connect string"`
 			Cache struct {
-				Enabled            bool   `toml:"enabled"`
-				ExpirationInterval string `toml:"expiration_interval"`
-				CleanupInterval    string `toml:"cleanup_interval"`
-			} `toml:"cache"`
+				Enabled            bool   `long:"stub-cache-enabled" description:"Cache stub in memory"`
+				ExpirationInterval string `long:"stub-expiration-interval" default:"30m" description:"Stub lifetime in cache"`
+				CleanupInterval    string `long:"stub-cleanup-interval" default:"60m" description:"Remove stub from cache after"`
+			}
 		}
 	}
 }
-
-var cfg *StubRouterConfig
 
 // normalize fix params and set defaults
 func normalize(cfg *StubRouterConfig) error {
@@ -48,12 +45,14 @@ func normalize(cfg *StubRouterConfig) error {
 	return nil
 }
 
-func ParseConfig() (*StubRouterConfig, error) {
-	_, err := toml.DecodeFile("config.toml", &cfg)
+func ParseConfig() (StubRouterConfig, error) {
+	var cfg StubRouterConfig
+
+	_, err := flags.Parse(&cfg)
 	if err != nil {
 		return cfg, err
 	}
 
-	_ = normalize(cfg)
+	_ = normalize(&cfg)
 	return cfg, nil
 }
