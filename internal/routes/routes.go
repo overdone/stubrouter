@@ -25,10 +25,10 @@ func Routes(cfg *config.StubRouterConfig, sessionManager *scs.SessionManager, st
 	mx.Handle("/stubapi/", ApiHandlerTarget(stubStore)).
 		Queries("target", "{target}").
 		Methods("GET")
-	mx.Handle("/", AuthMiddleware(sessionManager)(RootHandler(cfg, sessionManager))).
+	mx.Handle("/", AuthMiddleware(cfg, sessionManager)(RootHandler(cfg, sessionManager))).
 		Methods("GET")
 	mx.PathPrefix("/{route}").
-		Handler(AuthMiddleware(sessionManager)(RouteHandler(cfg, stubStore, sessionManager)))
+		Handler(AuthMiddleware(cfg, sessionManager)(RouteHandler(cfg, stubStore, sessionManager)))
 
 	mx.Use(serverErrorMiddleware, logMiddleware)
 

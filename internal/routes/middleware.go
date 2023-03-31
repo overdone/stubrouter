@@ -3,6 +3,7 @@ package routes
 import (
 	"fmt"
 	"github.com/alexedwards/scs/v2"
+	"github.com/overdone/stubrouter/internal/config"
 	"html/template"
 	"log"
 	"net/http"
@@ -44,10 +45,10 @@ func serverErrorMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(fn)
 }
 
-func AuthMiddleware(sessionManager *scs.SessionManager) func(http.Handler) http.Handler {
+func AuthMiddleware(cfg *config.StubRouterConfig, sessionManager *scs.SessionManager) func(http.Handler) http.Handler {
 	m := func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
-			if sessionManager.Exists(r.Context(), "userData") {
+			if !cfg.Auth.Enabled || sessionManager.Exists(r.Context(), "userData") {
 				next.ServeHTTP(w, r)
 			} else {
 				// Save original user url path

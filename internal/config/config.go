@@ -15,7 +15,11 @@ type StubRouterConfig struct {
 		Duration    string `long:"sess-duration" default:"24h" description:"Session duration in time.Duration format"`
 		IdleTimeout string `long:"sess-idle" default:"0h" description:"Session idle in time.Duration format"`
 		CookieName  string `long:"sess-cookie-name" default:"sessid" description:"Session cookie name"`
-		UseridField string `long:"sess-user-field" description:"Session user field in JWT token"`
+	}
+
+	Auth struct {
+		Enabled     bool   `long:"auth-enabled" description:"Enable auth"`
+		UseridField string `long:"auth-user-field" description:"Auth user field in JWT token"`
 	}
 
 	Targets map[string]string `short:"t" long:"target" description:"Target pair target_path:target_host"`

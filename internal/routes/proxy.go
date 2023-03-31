@@ -20,8 +20,6 @@ func handleProxy(cfg *config.StubRouterConfig, stubStore stubs.StubStorage, sess
 		path := "/" + mux.Vars(r)["route"]
 		host := cfg.Targets[path]
 
-		sessionData := getSessionDataForRequest(r, sessionManager)
-
 		targetPath := strings.TrimPrefix(r.URL.Path, path)
 		targetUrl, _ := url.Parse(host)
 		proxy := httputil.NewSingleHostReverseProxy(targetUrl)
@@ -33,8 +31,12 @@ func handleProxy(cfg *config.StubRouterConfig, stubStore stubs.StubStorage, sess
 		r.URL.Host = targetUrl.Host
 		r.URL.Path = targetPath
 		r.Header.Set("X-Forwarded-Host", r.Header.Get("Host"))
-		r.Header.Set("Authorization", fmt.Sprint("Bearer ", sessionData.Jwt))
 		r.Host = targetUrl.Host
+
+		if cfg.Auth.Enabled {
+			sessionData := getSessionDataForRequest(r, sessionManager)
+			r.Header.Set("Authorization", fmt.Sprint("Bearer ", sessionData.Jwt))
+		}
 
 		proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
 			log.Panic(fmt.Sprintf("Can`t proxy request to %s", targetUrl))

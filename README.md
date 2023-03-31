@@ -12,7 +12,8 @@ To all backend requests will be added Authorization header with valid JWT token(
       --sess-idle=                Session idle in time.Duration format
                                   (default: 0h)
       --sess-cookie-name=         Session cookie name (default: sessid)
-      --sess-user-field=          Session user field in JWT token
+      --auth-enabled              Enable auth
+      --auth-user-field=          Auth user field in JWT token
   -t, --target=                   Target pair target_path:target_host
       --stub-type=                Stub storage type: file, redis (default: file)
       --stub-path=                Stub storage path: FS path, redis connect
@@ -20,8 +21,6 @@ To all backend requests will be added Authorization header with valid JWT token(
       --stub-cache-enabled        Cache stub in memory
       --stub-expiration-interval= Stub lifetime in cache (default: 30m)
       --stub-cleanup-interval=    Remove stub from cache after (default: 60m)
-
-  -h, --help                      Show this help message
 ```
 
 

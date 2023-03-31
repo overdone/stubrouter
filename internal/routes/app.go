@@ -48,8 +48,14 @@ func RootHandler(cfg *config.StubRouterConfig, sessionManager *scs.SessionManage
 			log.Panic("Server error")
 			return
 		}
-		sessionData := getSessionDataForRequest(r, sessionManager)
-		data := IndexViewData{*cfg, sessionData.Username}
+
+		username := ""
+		if cfg.Auth.Enabled {
+			sessionData := getSessionDataForRequest(r, sessionManager)
+			username = sessionData.Username
+		}
+
+		data := IndexViewData{*cfg, username}
 		err = tmpl.Execute(w, data)
 		if err != nil {
 			log.Panic("Server error")
