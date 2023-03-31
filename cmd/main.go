@@ -9,9 +9,12 @@ import (
 	"github.com/overdone/stubrouter/internal/stubs"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 )
+
+var version string
 
 var cfg config.StubRouterConfig
 var stubStore stubs.StubStorage
@@ -20,10 +23,12 @@ var sessionManager *scs.SessionManager
 func init() {
 	gob.Register(&routes.UserSessionData{})
 
+	fmt.Printf("-== StubRouter version %s ==-\n\n", version)
+
 	c, err := config.ParseConfig()
 	cfg = c
 	if err != nil {
-		log.Fatal(err)
+		os.Exit(1)
 	}
 
 	log.Println("-- Init stub storage --")

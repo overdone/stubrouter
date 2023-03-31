@@ -1,5 +1,5 @@
 GIT_REV=$(shell git describe --abbrev=8 --always --tags)
-VER=$(GIT_REV)-$(shell date +%Y%m%d-%H:%M:%S)
+VER=$(GIT_REV)-$(shell date +%Y-%m-%d-%H:%M:%S)
 
 build:
 	@echo "  >>>  Building binary files..."
