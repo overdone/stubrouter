@@ -140,7 +140,7 @@ func (s FileStubStorage) RemoveServiceStub(host *url.URL, path string) error {
 
 // InitStorage Inits Redis DB storage
 func (s RedisStubStorage) InitStorage(cfg *config.StubRouterConfig) error {
-	opts, err := redis.ParseURL(cfg.Stubs.Storage.Path)
+	opts, err := redis.ParseURL(cfg.StubsStorage.Path)
 	if err != nil {
 		return fmt.Errorf("invalid redis path")
 	}
@@ -202,8 +202,8 @@ func (s RedisStubStorage) RemoveServiceStub(host *url.URL, path string) error {
 
 // InitStorage - Inits cached cache
 func (cs *CachedStorage) InitStorage(cfg *config.StubRouterConfig) error {
-	expirationInterval, err := time.ParseDuration(cfg.Stubs.Storage.Cache.ExpirationInterval)
-	cleanupInterval, err := time.ParseDuration(cfg.Stubs.Storage.Cache.CleanupInterval)
+	expirationInterval, err := time.ParseDuration(cfg.StubsStorage.Cache.ExpirationInterval)
+	cleanupInterval, err := time.ParseDuration(cfg.StubsStorage.Cache.CleanupInterval)
 	if err != nil {
 		log.Fatal(">>> Config error. Invalid stub config param")
 	}

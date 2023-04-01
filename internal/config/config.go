@@ -9,32 +9,30 @@ type StubRouterConfig struct {
 	Server struct {
 		Host string `short:"h" long:"host" default:"0.0.0.0" description:"Listen host address"`
 		Port int    `short:"p" long:"port" default:"3333" description:"Listen host port"`
-	}
+	} `group:"server" namespace:"server"`
 
 	Session struct {
-		Duration    string `long:"sess-duration" default:"24h" description:"Session duration in time.Duration format"`
-		IdleTimeout string `long:"sess-idle" default:"0h" description:"Session idle in time.Duration format"`
-		CookieName  string `long:"sess-cookie-name" default:"sessid" description:"Session cookie name"`
-	}
+		Duration    string `long:"duration" default:"24h" description:"Session duration in time.Duration format"`
+		IdleTimeout string `long:"idle-timeout" default:"0h" description:"Session idle in time.Duration format"`
+		CookieName  string `long:"cookie-name" default:"sessid" description:"Session cookie name"`
+	} `group:"session" namespace:"session"`
 
 	Auth struct {
-		Enabled     bool   `long:"auth-enabled" description:"Enable auth"`
-		UseridField string `long:"auth-user-field" description:"Auth user field in JWT token"`
-	}
+		Enabled     bool   `long:"enabled" description:"Enable auth"`
+		UseridField string `long:"user-field" description:"Auth user field in JWT token"`
+	} `group:"auth" namespace:"auth"`
 
 	Targets map[string]string `short:"t" long:"target" description:"Target pair target_path:target_host"`
 
-	Stubs struct {
-		Storage struct {
-			Type  string `long:"stub-type" default:"file" description:"Stub storage type: file, redis"`
-			Path  string `long:"stub-path" default:"." description:"Stub storage path: FS path, redis connect string"`
-			Cache struct {
-				Enabled            bool   `long:"stub-cache-enabled" description:"Cache stub in memory"`
-				ExpirationInterval string `long:"stub-expiration-interval" default:"30m" description:"Stub lifetime in cache"`
-				CleanupInterval    string `long:"stub-cleanup-interval" default:"60m" description:"Remove stub from cache after"`
-			}
-		}
-	}
+	StubsStorage struct {
+		Type  string `long:"type" default:"file" description:"Stub storage type: file, redis"`
+		Path  string `long:"path" default:"." description:"Stub storage path: FS path, redis connect string"`
+		Cache struct {
+			Enabled            bool   `long:"enabled" description:"Cache stub in memory"`
+			ExpirationInterval string `long:"expiration-interval" default:"30m" description:"Stub lifetime in cache"`
+			CleanupInterval    string `long:"cleanup-interval" default:"60m" description:"Remove stub from cache after"`
+		} `group:"cache" namespace:"cache"`
+	} `group:"stubs" namespace:"stubs"`
 }
 
 // normalize fix params and set defaults

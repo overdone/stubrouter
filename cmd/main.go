@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-var version string
+var revision string
 
 var cfg config.StubRouterConfig
 var stubStore stubs.StubStorage
@@ -23,7 +23,7 @@ var sessionManager *scs.SessionManager
 func init() {
 	gob.Register(&routes.UserSessionData{})
 
-	fmt.Printf("-== StubRouter version %s ==-\n\n", version)
+	fmt.Printf("-== StubRouter revision: %s ==-\n\n", revision)
 
 	c, err := config.ParseConfig()
 	cfg = c
@@ -32,19 +32,19 @@ func init() {
 	}
 
 	log.Println("-- Init stub storage --")
-	switch cfg.Stubs.Storage.Type {
+	switch cfg.StubsStorage.Type {
 	case "file":
-		stubStore = &stubs.FileStubStorage{FsPath: cfg.Stubs.Storage.Path}
-		if cfg.Stubs.Storage.Cache.Enabled {
+		stubStore = &stubs.FileStubStorage{FsPath: cfg.StubsStorage.Path}
+		if cfg.StubsStorage.Cache.Enabled {
 			stubStore = &stubs.CachedStorage{Store: stubStore}
 		}
 	case "redis":
-		stubStore = &stubs.RedisStubStorage{ConnString: cfg.Stubs.Storage.Path}
-		if cfg.Stubs.Storage.Cache.Enabled {
+		stubStore = &stubs.RedisStubStorage{ConnString: cfg.StubsStorage.Path}
+		if cfg.StubsStorage.Cache.Enabled {
 			stubStore = &stubs.CachedStorage{Store: stubStore}
 		}
 	default:
-		log.Fatalf(">>> Config error. Stub storage type %s not supported", cfg.Stubs.Storage.Type)
+		log.Fatalf(">>> Config error. Stub storage type %s not supported", cfg.StubsStorage.Type)
 	}
 	err = stubStore.InitStorage(&cfg)
 	if err != nil {
