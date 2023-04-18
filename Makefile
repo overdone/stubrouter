@@ -9,7 +9,7 @@ build:
 
 dist: build
 	@echo "  >>>  Make distribution..."
-	@tar cvf dist.tar config.toml web -C bin stubrouter-linux stubrouter-macos
+	@tar cvf dist.tar web -C bin stubrouter-linux stubrouter-macos
 
 clean:
 	@rm -rf bin dist.tar
