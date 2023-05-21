@@ -41,6 +41,15 @@ func (nfs IndexesFileSystem) Open(path string) (http.File, error) {
 	return f, nil
 }
 
+func StaticHandler() http.HandlerFunc {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		h := http.FileServer(IndexesFileSystem{http.Dir("web/")})
+		h.ServeHTTP(w, r)
+	}
+
+	return fn
+}
+
 func RootHandler(cfg *config.StubRouterConfig, sessionManager *scs.SessionManager) http.HandlerFunc {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		tmpl, err := template.ParseFiles("./web/templates/index.html")

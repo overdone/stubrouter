@@ -4,9 +4,9 @@ import (
 	"crypto/tls"
 	"fmt"
 	"github.com/alexedwards/scs/v2"
-	"github.com/gorilla/mux"
 	"github.com/overdone/stubrouter/internal/config"
 	"github.com/overdone/stubrouter/internal/stubs"
+	"goji.io/pat"
 	"log"
 	"net/http"
 	"net/http/httputil"
@@ -17,7 +17,7 @@ import (
 
 func handleProxy(cfg *config.StubRouterConfig, stubStore stubs.StubStorage, sessionManager *scs.SessionManager) http.HandlerFunc {
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		path := "/" + mux.Vars(r)["route"]
+		path := "/" + pat.Param(r, "route")
 		host := cfg.Targets[path]
 
 		targetPath := strings.TrimPrefix(r.URL.Path, path)
@@ -62,7 +62,7 @@ func handleProxy(cfg *config.StubRouterConfig, stubStore stubs.StubStorage, sess
 
 func RouteHandler(cfg *config.StubRouterConfig, stubStore stubs.StubStorage, sessionManager *scs.SessionManager) http.HandlerFunc {
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		forkPath := "/" + mux.Vars(r)["route"]
+		forkPath := "/" + pat.Param(r, "route")
 
 		if _, hasKey := cfg.Targets[forkPath]; !hasKey {
 			msg := fmt.Sprintf("Target path '%s' not found", r.URL.Path)

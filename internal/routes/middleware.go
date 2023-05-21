@@ -45,7 +45,7 @@ func serverErrorMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(fn)
 }
 
-func AuthMiddleware(cfg *config.StubRouterConfig, sessionManager *scs.SessionManager) func(http.Handler) http.Handler {
+func authMiddleware(cfg *config.StubRouterConfig, sessionManager *scs.SessionManager) func(http.Handler) http.Handler {
 	m := func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			if !cfg.Auth.Enabled || sessionManager.Exists(r.Context(), "userData") {

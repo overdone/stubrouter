@@ -2,35 +2,33 @@ package routes
 
 import (
 	"github.com/alexedwards/scs/v2"
-	"github.com/gorilla/mux"
 	"github.com/overdone/stubrouter/internal/config"
 	"github.com/overdone/stubrouter/internal/stubs"
-	"net/http"
+	goji "goji.io"
+	"goji.io/pat"
 )
 
-func Routes(cfg *config.StubRouterConfig, sessionManager *scs.SessionManager, stubStore stubs.StubStorage) *mux.Router {
-	fs := http.FileServer(IndexesFileSystem{http.Dir("./web/static")})
-	mx := mux.NewRouter()
+func Routes(cfg *config.StubRouterConfig, sessionManager *scs.SessionManager, stubStore stubs.StubStorage) *goji.Mux {
+	router := goji.NewMux()
 
-	mx.PathPrefix("/static/").
-		Handler(http.StripPrefix("/static/", fs)).
-		Methods("GET")
-	mx.Handle("/login", LoginHandler(cfg, sessionManager)).
-		Methods("GET", "POST")
-	mx.Handle("/logout", LogoutHandler(sessionManager)).
-		Methods("GET")
-	mx.Handle("/stubapi/", ApiHandlerTargetStub(stubStore)).
-		Queries("target", "{target}", "path", "{path}").
-		Methods("GET", "POST", "DELETE")
-	mx.Handle("/stubapi/", ApiHandlerTarget(stubStore)).
-		Queries("target", "{target}").
-		Methods("GET")
-	mx.Handle("/", AuthMiddleware(cfg, sessionManager)(RootHandler(cfg, sessionManager))).
-		Methods("GET")
-	mx.PathPrefix("/{route}").
-		Handler(AuthMiddleware(cfg, sessionManager)(RouteHandler(cfg, stubStore, sessionManager)))
+	router.HandleFunc(pat.New("/static/*"), StaticHandler())
 
-	mx.Use(serverErrorMiddleware, logMiddleware)
+	router.Handle(pat.Get("/"), authMiddleware(cfg, sessionManager)(RootHandler(cfg, sessionManager)))
 
-	return mx
+	loginFunc := LoginHandler(cfg, sessionManager)
+	router.Handle(pat.Get("/login"), loginFunc)
+	router.Handle(pat.Post("/login"), loginFunc)
+
+	router.Handle(pat.Get("/logout"), LogoutHandler(sessionManager))
+
+	router.Handle(pat.New("/stubapi/*"), StubApiHandler(stubStore))
+
+	routHandler := authMiddleware(cfg, sessionManager)(RouteHandler(cfg, stubStore, sessionManager))
+	router.Handle(pat.New("/:route"), routHandler)
+	router.Handle(pat.New("/:route/*"), routHandler)
+
+	router.Use(serverErrorMiddleware)
+	router.Use(logMiddleware)
+
+	return router
 }

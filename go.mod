@@ -6,9 +6,9 @@ require (
 	github.com/alexedwards/scs/v2 v2.5.0
 	github.com/go-redis/redis/v9 v9.0.0-rc.1
 	github.com/golang-jwt/jwt/v4 v4.4.2
-	github.com/gorilla/mux v1.8.0
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
+	goji.io v2.0.2+incompatible
 	gopkg.in/yaml.v3 v3.0.1
 )
 

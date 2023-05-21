@@ -44,7 +44,6 @@ async function onSaveStubClick(el, target) {
 async function onRemoveStubClick(el, target) {
     const stubForm = el.closest('form');
     const formData = Object.fromEntries(new FormData(stubForm));
-    console.log(formData)
 
     try {
         if (stubForm.getAttribute('isnew') === 'false') {
